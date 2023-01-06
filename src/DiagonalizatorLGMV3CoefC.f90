@@ -13,6 +13,9 @@
 !                                                                        !
 ! The output for each parity are printed in the files  - resultsp+ck.dat !
 !                                                      - resultsp-ck.dat !
+!                                                                        !
+! Gnuplot visualization:                                                 !
+!                       gnuplot>plot 'resultsp+ck.dat' u 1:2 w lp        !               !
 !************************************************************************!
 !---------------!
  program LGMmodel
