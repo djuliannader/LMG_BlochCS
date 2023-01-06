@@ -1,21 +1,22 @@
 !******************
 ! compile as:
-! gfortran -o LGMcoefC ./DiagonalizatorLGMV3CoefC.f90 -llapack -lblas
+! gfortran -o LGMcoefC.exe ./DiagonalizatorLGMV3CoefC.f90 -llapack -lblas
 !************************
 !------------------------------------------------------------------------!
 ! Author Daniel Julian Nader                                             !
 ! Collaboration Sergio Lerma                                             !
 !                                                                        !
-!  This code:                                                            !          !
+!  This code:                                                            !          
 !     -  diagonalize LGM Model in SU(2) representation                   !
-!     -  Calculate  the profile of the Bloch coherent state  |z>         !
-!        by projecting the eigenstates ck=<E_k|z>                        !                                                !
+!     -  Calculate  the profile of the Bloch                             !
+!        coherent state |z(theta,phi)>                                   !
+!        by projecting the eigenstate ck^2=|<E_k|z>|^2                   !                                           
 !                                                                        !
-! The output for each parity are printed in the files  - resultsp+ck.dat !
-!                                                      - resultsp-ck.dat !
+! The output for each parity is printed in the file: - resultsp+ck.dat   !
+!                                                    - resultsp-ck.dat   !
 !                                                                        !
 ! Gnuplot visualization:                                                 !
-!                       gnuplot>plot 'resultsp+ck.dat' u 1:2 w lp        !               !
+!                     gnulplot>plot 'resultsp+ck.dat' u 2:3 w lp         !
 !************************************************************************!
 !---------------!
  program LGMmodel
@@ -213,7 +214,7 @@ print*,'gammay= ',gammay
   write(1,*)'# Phi   (initial coherent state)',phi
   write(1,*)'# positive parity '
   write(1,*)'# ****************************  #'
-  write(1,*)'#   k                  E_k/J                   c_k    #'
+  write(1,*)'#   k                  E_k/J                   c_k^2    #'
 
 
 
@@ -254,7 +255,7 @@ print*,'gammay= ',gammay
   write(1,*)'# Phi   (initial coherent state)',phi
   write(1,*)'# negative parity '
   write(1,*)'# ****************************  #'
-  write(1,*)'#   k                  E_k/J                   c_k    #'
+  write(1,*)'#   k                  E_k/J                   c_k^2    #'
 
 
   alabs=1.0d0*tan(theta/2.0)

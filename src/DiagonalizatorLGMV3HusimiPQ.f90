@@ -1,17 +1,22 @@
 !******************
 ! compile as:
-! gfortran -o LGMcoefC ./DiagonalizatorLGMV3CoefC.f90 -L/usr/local/lib -llapack -lblas
+! gfortran -o LGMHusimiPQ.exe ./DiagonalizatorLGMV3HusimiPQ.f90 -llapack -lblas
 !************************
 !------------------------------------------------------------------------!
 ! Author Daniel Julian Nader                                             !
 ! Collaboration Sergio Lerma                                             !
 !                                                                        !
-!  This code:                                                            !          !
+!  This code:                                                            !        
 !     -  diagonalize LGM Model in SU(2) representation                   !
-!     -  Calculate  the profile of the Bloch coherent state  |z>         !
-!        by projecting the eigenstates ck=<E_k|z>                        !                                                !
+!     -  Calculate  the Husimi function  Q(P,Q)=|<E_k|z(P,Q)>|           !
+!     -  Calculate the first and second moment of Husimi entropy         !
+!     -  Calculate the Wehrl entropy                                     !
 !                                                                        !
-! The output is printed in the file  resultsp+ck.dat                     !
+! The output for each parity are printed in the files  - HusimiPQp+.dat  !
+!                                                      - HusimiPQp-.dat  !
+!                                                                        !
+! Gnuplot visualization:                                                 !
+!                     gnulplot>splot 'HusimiPQp+.dat' u 1:2:3 w l        !
 !************************************************************************!
 
 !---------------!
@@ -19,7 +24,7 @@
 !---------------!
 
    !
-   !********* variables definition  ******************************
+   !********* variables definition ******************************
    !
    
  implicit none
@@ -31,14 +36,16 @@
  integer :: i,ii,j,jq,jj,kk,kkk,n,nMC,m,mq
  real(8), allocatable :: m0p(:,:),m1p(:,:),m2p(:,:),eigp(:)
  real(8), allocatable :: m0n(:,:),m1n(:,:),m2n(:,:),eign(:)
- real(8) :: epsilon,uMC, w, v, gammax, gammay  ! Hamiltonian
+ real(8), allocatable :: Q(:),ThetaL(:),PhiL(:)
+ real(8) :: epsilon,uMC, w, v, gammax, gammay  ! Hamiltoniano
  real(DP) :: alabs,alere,aleim,theta,phi  ! Husimi
  real(DP) :: Q2temp,QM2,Q2sum,Qpsitemp,Qpsi,Wtemp,Wpsi  ! Husimi
 
- real(DP) :: Qh,u,vv,delta,bin,pi
+ real(DP) :: Qh,u,vv,delta,bin,pi,Qc,Pc
 
  pi=3.14159265359
  
+
 
 
   !**************  Read data  ****************
@@ -51,10 +58,8 @@
  read*, gammax
  print*,"gammay (parameter)"
  read*, gammay
- print*,'Theta (initial coherent state)'
- read*,theta
- print*,'Phi   (initial coherent state)'
- read*,phi
+ print*,'Husimi QE_k'
+ read*,ii 
 
  v=epsilon*(gammax-gammay)/(2.0*(2.0*jj-1.0))
  w=epsilon*(gammax+gammay)/(2.0*(2.0*jj-1.0))
@@ -62,7 +67,7 @@
   ! ************   Diagonalization       ****************
 
  
-
+! Defining matrix
 
 
  
@@ -74,14 +79,17 @@
  allocate (m1n(jj,jj))
  allocate (m2n(jj,jj))
  allocate (eign(jj))
+ allocate (Q(30000))
+ allocate (ThetaL(30000))
+ allocate (PhiL(30000))
 
 
 
  
 !!$ !********************************************************************
-!!$ ! ************   Calculate matrix elements**********************
+!!$ ! ************Calculating matrix elements      **********************
 !!$ !********************************************************************
- ! All elements starting as zero
+ ! All elements start from zero
 do i=1,jj
 do j=1,jj
    m0p(i,j)=0.0
@@ -98,11 +106,11 @@ enddo
  !!**** Elements in the diagonal**********!
 
  do i=0,jj
-    m0p(i+1,i+1)=epsilon*(-jj+2*i)+(w)*(jj*(jj+1)-(-jj+2*i)**2)    ! <------   !!!positive parity
+    m0p(i+1,i+1)=epsilon*(-jj+2*i)+(w)*(jj*(jj+1)-(-jj+2*i)**2)    ! <------   !!!paridad positiva
  enddo
 
  do i=0,jj-1
-    m0n(i+1,i+1)=epsilon*(-jj+2*i+1)+(w)*(jj*(jj+1)-(-jj+2*i+1)**2)    ! <------   !!! negative parity
+    m0n(i+1,i+1)=epsilon*(-jj+2*i+1)+(w)*(jj*(jj+1)-(-jj+2*i+1)**2)    ! <------   !!!paridad negativa
  enddo
 
 
@@ -111,32 +119,31 @@ enddo
 
     do i=0,jj-1
        m0p(i+1,i+2)=1.0*(v/2.0)*(jj*(jj+1)-(-jj+2*i+2)*((-jj+2*i+2)-1))**(1.0/2.0)* &
-           & (jj*(jj+1)-((-jj+2*i+2)-1)*((-jj+2*i+2)-2))**(1.0/2.0)  ! <------   !!! positive parity            
+           & (jj*(jj+1)-((-jj+2*i+2)-1)*((-jj+2*i+2)-2))**(1.0/2.0)  ! <------   !!!paridad positiva            
     enddo
 
     do i=0,jj-2
        m0n(i+1,i+2)=1.0*(v/2.0)*(jj*(jj+1)-(-jj+2*i+3)*((-jj+2*i+3)-1))**(1.0/2.0)* &
-           & (jj*(jj+1)-((-jj+2*i+3)-1)*((-jj+2*i+3)-2))**(1.0/2.0) ! <------   !!! negative parity
+           & (jj*(jj+1)-((-jj+2*i+3)-1)*((-jj+2*i+3)-2))**(1.0/2.0) ! <------   !!!paridad negativa
     enddo
 
 
 
 
  do i=0,jj-1
-    m0p(i+2,i+1)=m0p(i+1,i+2)         ! <------   !!! positive parity
+    m0p(i+2,i+1)=m0p(i+1,i+2)         ! <------   !!!positive parity
  enddo
 
  do i=0,jj-2
-    m0n(i+2,i+1)=m0n(i+1,i+2)         ! <------   !!! negative parity
+    m0n(i+2,i+1)=m0n(i+1,i+2)         ! <------   !!!negative parity
  enddo
 
   
- !   
 
  m1p(:,:)=m0p(:,:)
  m1n(:,:)=m0n(:,:)
 
-! Call routini which will perform diagonalization (positive/negative parity separated)
+! Calling routine which perform diagonalization
  call diasym(m1p,eigp,jj+1)
  call diasym(m1n,eign,jj)
 
@@ -160,7 +167,7 @@ print*,'gammay= ',gammay
 
 
 
-!***Energias******!
+!***Energies******!
 
  print*,'Eigenvalues (positive parity):'
  do i=1,jj+1
@@ -178,15 +185,15 @@ print*,'gammay= ',gammay
      !endif
   enddo 
 
-   print*,'************************'
-   print*,'Husimi Representation   *'
-   print*,'see files:              *'
-   print*,'        resultsp+ck.dat *'
-   print*,'        resultsp-ck.dat *'
-   print*,'************************'
+   print*,'**************************'
+   print*,'Husimi Representation    *'
+   print*,'see files:               *'
+   print*,'         HusimiPQp+.dat *'
+   print*,'         HusimiPQp-.dat *'
+   print*,'**************************'
 
 
-!**** eigenvectors***!
+!****vectores propios***!
 
 !!$    print*,'Eigenvector:'
 !!$    do i=1,jj+1
@@ -196,9 +203,9 @@ print*,'gammay= ',gammay
 !!$ print*,
 
 !******************************************************************************
-!***** Printing results in the output file*********!
+!!$!*****Husimi e impresion en un archivo de datos*********!
 !!$!******************************************************************************
-  open(1,file='resultsp+ck.dat',status='new')
+  open(1,file='HusimiPQp+.dat',status='new')
 
   write(1,*)'# ********Parameters**********  #'
   write(1,*)'# angular momentum',jj
@@ -206,19 +213,20 @@ print*,'gammay= ',gammay
   write(1,*)'# gammax',gammax
   write(1,*)'# gammay',gammay
   write(1,*)'# Epsilon',epsilon
-  write(1,*)'# Theta (initial coherent state)',theta
-  write(1,*)'# Phi   (initial coherent state)',phi
+  write(1,*)'# Husimi Q(i)',ii
   write(1,*)'# positive parity '
   write(1,*)'# ****************************  #'
-  write(1,*)'#   k                  E_k/J                   c_k    #'
+  write(1,*)'#            u                          v                          Q #'
 
-
-
-
-
-  alabs=1.0d0*tan(theta/2.0)
-  do ii=1,jj+1
+  nn=100
+  delta=pi/(nn*1.0d0)
+  theta=0.0d0
+  kkk=0
+  do k=0,nn
+     phi=0.0d0
+     do kk=0,2*nn
   !***Husimi************!
+   alabs=1.0d0*tan(theta/2.0)
    alere=0.0d0
    aleim=0.0d0
    do m=0,jj
@@ -229,62 +237,101 @@ print*,'gammay= ',gammay
          &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m)))*sin((jj+(-jj+2*m))*phi)
    enddo
    Qh= 1.0d0*(alere**2.0+aleim**2.0)
-   write(1,*)ii,' ' ,eigp(ii)/jj, '  ',Qh 
+   Qc=sqrt(2*(1.0d0-cos(theta)))*cos(phi)
+   Pc=-sqrt(2*(1.0d0-cos(theta)))*sin(phi)
+   kkk=kkk+1
+   Q(kkk) = Qh
+   ThetaL(kkk)=theta
+   PhiL(kkk)=phi
+   write(1,*)Qc, '  ',Pc, '  ',Qh 
 
+   phi=phi+delta
+   enddo
+   theta=theta+delta
    enddo
    
    close(1)
 
+!   ********************************************************************   
+!   Uncomment below only in case of interes in states of negative parity
+!   ********************************************************************   
+
+!!$  open(2,file='resultsp-.dat',status='new')
+!!$
+!!$  write(2,*)'# ********Parameters**********  #'
+!!$  write(2,*)'# angular momentum',jj
+!!$  write(2,*)'# Epsilon',epsilon
+!!$  write(2,*)'# gammax',gammax
+!!$  write(2,*)'# gammay',gammay
+!!$  write(2,*)'# Epsilon',epsilon
+!!$  write(2,*)'# Husimi Q(i)',ii
+!!$  write(2,*)'# negative parity '
+!!$  write(2,*)'# ****************************  #'
+!!$  write(2,*)'#            u                          v                          Q #'
+!!$
+!!$  nn=100
+!!$  delta=pi/(nn*1.0d0)
+!!$  theta=0.0d0
+!!$  do k=0,nn
+!!$     phi=0.0d0
+!!$     do kk=0,2*nn
+!!$  !***Husimi************!
+!!$   alabs=1.0d0*tan(theta/2.0)
+!!$   alere=0.0d0
+!!$   aleim=0.0d0
+!!$   do m=0,jj
+!!$   call binomial(2*jj,jj+(-jj+2*m+1),bin)
+!!$   alere=alere+m1n(ii,m+1)*(1.0/(1.+alabs**2.0)**jj)*  &
+!!$         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m+1)))*cos((jj+(-jj+2*m+1))*phi)
+!!$   aleim=aleim-m1n(ii,m+1)*(1.0/(1.+alabs**2.0)**jj)*  &
+!!$         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m+1)))*sin((jj+(-jj+2*m+1))*phi)
+!!$   enddo
+!!$   Qh= 1.0d0*(alere**2.0+aleim**2.0)
+!!$   Qc=sqrt(2*(1.0d0-cos(theta)))*cos(phi)
+!!$   Pc=-sqrt(2*(1.0d0-cos(theta)))*sin(phi)
+!!$   kkk=kkk+1
+!!$   Q(kkk) = Qh
+!!$   ThetaL(kkk)=theta
+!!$   PhiL(kkk)=phi
+!!$   write(1,*)Qc, '  ',Pc, '  ',Qh
+!!$
+!!$   phi=phi+delta
+!!$   enddo
+!!$   theta=theta+delta
+!!$   enddo
+!!$
+!!$   
+!!$  close(2)
 
 
-   !********* Negative parity ***********************!
+!********* Calculating moments and Wehrl entropy *************!
+   Q2sum=0d0
+   Qpsitemp=0d0
+   Wtemp=0d0
+        nMC=1e7
+       do i=1, nMC
+          call random_number(uMC)
+          jq = 1 + FLOOR((kkk)*uMC)
+          Q2temp=(Q(jq)*Q(jq))*sin(ThetaL(jq))
+          Q2sum=Q2sum+Q2temp
+          Qpsitemp=Qpsitemp+(Q(jq))*sin(ThetaL(jq))
+          Wtemp=Wtemp-(Q(jq))*log(Q(jq))*sin(ThetaL(jq))
+       enddo
 
-     open(1,file='resultsp-ck.dat',status='new')
-
-  write(1,*)'# ********Parameters**********  #'
-  write(1,*)'# angular momentum',jj
-  write(1,*)'# Epsilon',epsilon
-  write(1,*)'# gammax',gammax
-  write(1,*)'# gammay',gammay
-  write(1,*)'# Epsilon',epsilon
-  write(1,*)'# Theta (initial coherent state)',theta
-  write(1,*)'# Phi   (initial coherent state)',phi
-  write(1,*)'# negative parity '
-  write(1,*)'# ****************************  #'
-  write(1,*)'#   k                  E_k/J                   c_k    #'
-
-
-  alabs=1.0d0*tan(theta/2.0)
-  do ii=1,jj+1
-  !***Husimi************!
-   alere=0.0d0
-   aleim=0.0d0
-   do m=0,jj-1
-   call binomial(2*jj,jj+(-jj+2*m+1),bin)
-   alere=alere+m1n(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
-         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m+1)))*cos((jj+(-jj+2*m+1))*phi)
-   aleim=aleim-m1n(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
-         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m+1)))*sin((jj+(-jj+2*m+1))*phi)
-   enddo
-   Qh= 1.0d0*(alere**2.0+aleim**2.0)
-   write(1,*)ii,' ' ,eign(ii)/jj, '  ',Qh 
-
-   enddo
+       Qpsi=2*pi*pi*Qpsitemp*((2.0*jj+1)/(4*pi))/nMC
+       QM2=((4.0*jj+1)/(2*jj+1))*((2.0*jj+1)/(4*pi))*2*pi*pi*(Q2sum/(nMC))
+       Wpsi=((2.0*jj+1)/(4*pi))*2*pi*pi*(Wtemp/(nMC))
+       
+       print*,'first  moment of Husimi rep  <Q>     :',Qpsi 
+       print*,'second moment of Husimi rep  <Q^2>   :',QM2
+       print*,'Entropy       of Husimi rep -<Q lnQ>):',Wpsi
+       print*,'flag',ThetaL(kkk),PhiL(kkk)
    
-   close(1)
-
-
 
 
   
   m2p=matmul(transpose(m1p),m0p)
   m0p=matmul(m2p,m1p)
-
-
-
-
-
-
 
 
 
@@ -315,7 +362,7 @@ print*,'gammay= ',gammay
 !---------------------!
 
 
-!********   Subroutine for the calculation of binomial factors ****!
+!********  Subroutine to calculate binomial factors ****!
  
 subroutine binomial(x,y,b)
      implicit none
