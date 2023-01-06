@@ -15,4 +15,13 @@ Prior to the compilation of any code you must first check to make sure you have 
     git clone https://github.com/djuliannader/LMG_BlochCS.git
 
 
+# Instructions
+
+Please read the head of each code for a brief description and
+compiling instructions
+
+All codes require that the output file do not exist in the same directory 
+
+We recomend to change the name of the output file after each calculation
+
 
