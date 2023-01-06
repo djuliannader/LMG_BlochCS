@@ -7,7 +7,7 @@ Prior to the compilation of any code you must first check to make sure you have 
 2. Lapack 
 3. Blas
 
-In case you do not have them, you can install easily using the following linux commands 
+In case you do not have them, you can easily install them using the following linux commands 
 
 sudo apt-get install gfortran
 
