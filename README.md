@@ -25,3 +25,12 @@ All codes require that the output file do not exist in the same directory
 We recomend to change the name of the output file after each calculation
 
 
+# References
+
+For formulas and discussions see
+
+https://doi.org/10.1103/PhysRevE.104.064116
+
+Cite as:
+
+D. J. Nader, C. A. González-Rodriguez, and S. A. Lerma-Hernández, Phys. Rev. E 104, 064116
