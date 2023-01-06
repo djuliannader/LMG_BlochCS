@@ -3,7 +3,7 @@ This is a collection of codes we used to study the time evolution of Bloch Coher
 
 Prior to the compilation of any code you must first check to make sure you have the following:
 
-1. Llapack 
+1. Lapack 
 2. Blas
 
 # Clone the repository
