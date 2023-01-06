@@ -1,6 +1,6 @@
 !******************
 ! compile as:
-! gfortran -o LGMHusimiPQ.exe ./DiagonalizatorLGMV3HusimiPQ.f90 -llapack -lblas
+! gfortran -o SurProb.exe ./LMGV3SurProbBlochCS.f90 -llapack -lblas
 !************************
 !------------------------------------------------------------------------!
 ! Author Daniel Julian Nader                                             !
@@ -8,15 +8,13 @@
 !                                                                        !
 !  This code:                                                            !        
 !     -  diagonalize LGM Model in SU(2) representation                   !
-!     -  Calculate  the Husimi function  Q(P,Q)=|<E_k|z(P,Q)>|           !
-!     -  Calculate the first and second moment of Husimi function        !
-!     -  Calculate the Wehrl entropy                                     !
+!     -  Calculate  the survival probability SP of an initial Bloch      !
+!        coherent state |z0(theta0,phi0)>                                !
 !                                                                        !
-! The output for each parity are printed in the files  - HusimiPQp+.dat  !
-!                                                      - HusimiPQp-.dat  !
+! The output for each parity are printed in the files  - Sp_cs.dat       !
 !                                                                        !
 ! Gnuplot visualization:                                                 !
-!                     gnulplot>splot 'HusimiPQp+.dat' u 1:2:3 w l        !
+!                     gnulplot>plot 'SP_cs.dat' u 1:2 w l                !
 !************************************************************************!
 
 !---------------!
@@ -24,7 +22,7 @@
 !---------------!
 
    !
-   !********* variables definition ******************************
+   !********* variables definition******************************
    !
    
  implicit none
@@ -33,22 +31,22 @@
 
  INTEGER, PARAMETER :: DP = SELECTED_REAL_KIND(16)
 
- integer :: i,ii,j,jq,jj,kk,kkk,n,nMC,m,mq
+ integer :: i,ii,j,jq,jj,kkk,n,nMC,m,mq
  real(8), allocatable :: m0p(:,:),m1p(:,:),m2p(:,:),eigp(:)
  real(8), allocatable :: m0n(:,:),m1n(:,:),m2n(:,:),eign(:)
  real(8), allocatable :: Q(:),ThetaL(:),PhiL(:)
- real(8) :: epsilon,uMC, w, v, gammax, gammay  ! Hamiltoniano
- real(DP) :: alabs,alere,aleim,theta,phi  ! Husimi
+ real(8) :: epsilon,uMC, Ps, w, v, gammax, gammay  ! Hamiltonian
+ real(DP) :: bkre,bkim,absbksqrt,theta,phi,alabs  
+ real(DP) :: sumre,sumim,dt
  real(DP) :: Q2temp,QM2,Q2sum,Qpsitemp,Qpsi,Wtemp,Wpsi  ! Husimi
 
- real(DP) :: Qh,u,vv,delta,bin,pi,Qc,Pc
+ real(DP) :: Qh,u,vv,delta,bin,pi,test
 
  pi=3.14159265359
  
 
 
-
-  !**************  Read data  ****************
+  !**************  Reading data  ****************
  
  print*,"Angular Momentum J"
  read*, jj
@@ -58,16 +56,18 @@
  read*, gammax
  print*,"gammay (parameter)"
  read*, gammay
- print*,'Husimi QE_k'
- read*,ii 
-
+ print*,'theta (coherent state)'
+ read*,theta
+ print*,'phi (coherent state)'
+ read*,phi
+ 
  v=epsilon*(gammax-gammay)/(2.0*(2.0*jj-1.0))
  w=epsilon*(gammax+gammay)/(2.0*(2.0*jj-1.0))
 
   ! ************   Diagonalization       ****************
 
  
-! Defining matrix
+
 
 
  
@@ -80,16 +80,15 @@
  allocate (m2n(jj,jj))
  allocate (eign(jj))
  allocate (Q(30000))
- allocate (ThetaL(30000))
- allocate (PhiL(30000))
+
 
 
 
  
 !!$ !********************************************************************
-!!$ ! ************Calculating matrix elements      **********************
+!!$ ! ************  Calculating matrix elements**********************
 !!$ !********************************************************************
- ! All elements start from zero
+ ! all matrix elements starts in zero
 do i=1,jj
 do j=1,jj
    m0p(i,j)=0.0
@@ -156,7 +155,6 @@ enddo
  !                           Printing results
 !******************************************************************************
 
-
 !***parameters*******!
 print*,'Diagonalization'
 print*, 'Angular momentum= ', jj
@@ -185,148 +183,82 @@ print*,'gammay= ',gammay
      !endif
   enddo 
 
-   print*,'**************************'
-   print*,'Husimi Representation    *'
-   print*,'see files:               *'
-   print*,'         HusimiPQp+.dat *'
-   print*,'         HusimiPQp-.dat *'
-   print*,'**************************'
+   print*,'************************'
+   print*,'Survival Probability   *'
+   print*,'see file:              *'
+   print*,'         SP_cs.dat     *'
+   print*,'                       *'
+   print*,'************************'
 
 
-!****vectores propios***!
-
-!!$    print*,'Eigenvector:'
-!!$    do i=1,jj+1
-!!$    print*,i,m1p(i,:)
-!!$     20 format(i3,'   ',10f14.8)
-!!$    enddo
-!!$ print*,
 
 !******************************************************************************
-!!$!*****Husimi e impresion en un archivo de datos*********!
+!*****  Printing the survival probability to a file                 *********!
 !!$!******************************************************************************
-  open(1,file='HusimiPQp+.dat',status='new')
+  open(1,file='SP_cs.dat',status='new')
 
+  dt=0.01
   write(1,*)'# ********Parameters**********  #'
   write(1,*)'# angular momentum',jj
   write(1,*)'# Epsilon',epsilon
   write(1,*)'# gammax',gammax
   write(1,*)'# gammay',gammay
   write(1,*)'# Epsilon',epsilon
-  write(1,*)'# Husimi Q(i)',ii
+  write(1,*)'# Theta (coherent state)',theta
+  write(1,*)'# Phi   (coherent state)',phi
   write(1,*)'# positive parity '
+  write(1,*)'# dt #',dt
   write(1,*)'# ****************************  #'
-  write(1,*)'#            u                          v                          Q #'
+  write(1,*)'#     t             P   '       
 
-  nn=100
-  delta=pi/(nn*1.0d0)
-  theta=0.0d0
-  kkk=0
-  do k=0,nn
-     phi=0.0d0
-     do kk=0,2*nn
-  !***Husimi************!
-   alabs=1.0d0*tan(theta/2.0)
-   alere=0.0d0
-   aleim=0.0d0
+  
+  
+  do kkk=0,10000
+     alabs=1.0d0*tan(theta/2.0)
+     sumre = 0.0
+     sumim = 0.0
+   do ii=1,jj+1
+      bkre = 0.0d0
+      bkim = 0.0d0
+!      test=0.0
    do m=0,jj
    call binomial(2*jj,jj+(-jj+2*m),bin)
-   alere=alere+m1p(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
+   bkre=bkre+m1p(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
          &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m)))*cos((jj+(-jj+2*m))*phi)
-   aleim=aleim-m1p(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
+   bkim=bkim+m1p(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
          &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m)))*sin((jj+(-jj+2*m))*phi)
    enddo
-   Qh= 1.0d0*(alere**2.0+aleim**2.0)
-   Qc=sqrt(2*(1.0d0-cos(theta)))*cos(phi)
-   Pc=-sqrt(2*(1.0d0-cos(theta)))*sin(phi)
-   kkk=kkk+1
-   Q(kkk) = Qh
-   ThetaL(kkk)=theta
-   PhiL(kkk)=phi
-   write(1,*)Qc, '  ',Pc, '  ',Qh 
-
-   phi=phi+delta
+   absbksqrt= bkre**2.0 + bkim**2.0
+   sumre = sumre + absbksqrt*cos(eigp(ii)*kkk*dt)
+   sumim = sumim - absbksqrt*sin(eigp(ii)*kkk*dt)
    enddo
-   theta=theta+delta
+
+   do ii=1,jj
+   bkre = 0.0d0
+   bkim = 0.0d0
+   do m=0,jj-1
+   call binomial(2*jj,jj+(-jj+1+2*m),bin)
+   bkre=bkre+m1n(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
+         &  bin**(1./2.)*((alabs)**(jj+(-jj+1+2*m)))*cos((jj+(-jj+1+2*m))*phi)
+   bkim=bkim+m1n(m+1,ii)*(1.0/(1.+alabs**2.0)**jj)*  &
+        &  bin**(1./2.)*((alabs)**(jj+(-jj+1+2*m)))*sin((jj+(-jj+1+2*m))*phi)
+   enddo
+   absbksqrt= bkre**2.0 + bkim**2.0
+   sumre = sumre + absbksqrt*cos(eign(ii)*kkk*dt)
+   sumim = sumim - absbksqrt*sin(eign(ii)*kkk*dt)
+   enddo
+
+   Ps= 1.0d0*(sumre**2.0+sumim**2.0)
+ 
+   write(1,*)kkk*dt,'  ',Ps 
+
+   
    enddo
    
    close(1)
 
-!   ********************************************************************   
-!   Uncomment below only in case of interes in states of negative parity
-!   ********************************************************************   
-
-!!$  open(2,file='resultsp-.dat',status='new')
-!!$
-!!$  write(2,*)'# ********Parameters**********  #'
-!!$  write(2,*)'# angular momentum',jj
-!!$  write(2,*)'# Epsilon',epsilon
-!!$  write(2,*)'# gammax',gammax
-!!$  write(2,*)'# gammay',gammay
-!!$  write(2,*)'# Epsilon',epsilon
-!!$  write(2,*)'# Husimi Q(i)',ii
-!!$  write(2,*)'# negative parity '
-!!$  write(2,*)'# ****************************  #'
-!!$  write(2,*)'#            u                          v                          Q #'
-!!$
-!!$  nn=100
-!!$  delta=pi/(nn*1.0d0)
-!!$  theta=0.0d0
-!!$  do k=0,nn
-!!$     phi=0.0d0
-!!$     do kk=0,2*nn
-!!$  !***Husimi************!
-!!$   alabs=1.0d0*tan(theta/2.0)
-!!$   alere=0.0d0
-!!$   aleim=0.0d0
-!!$   do m=0,jj
-!!$   call binomial(2*jj,jj+(-jj+2*m+1),bin)
-!!$   alere=alere+m1n(ii,m+1)*(1.0/(1.+alabs**2.0)**jj)*  &
-!!$         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m+1)))*cos((jj+(-jj+2*m+1))*phi)
-!!$   aleim=aleim-m1n(ii,m+1)*(1.0/(1.+alabs**2.0)**jj)*  &
-!!$         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m+1)))*sin((jj+(-jj+2*m+1))*phi)
-!!$   enddo
-!!$   Qh= 1.0d0*(alere**2.0+aleim**2.0)
-!!$   Qc=sqrt(2*(1.0d0-cos(theta)))*cos(phi)
-!!$   Pc=-sqrt(2*(1.0d0-cos(theta)))*sin(phi)
-!!$   kkk=kkk+1
-!!$   Q(kkk) = Qh
-!!$   ThetaL(kkk)=theta
-!!$   PhiL(kkk)=phi
-!!$   write(1,*)Qc, '  ',Pc, '  ',Qh
-!!$
-!!$   phi=phi+delta
-!!$   enddo
-!!$   theta=theta+delta
-!!$   enddo
-!!$
-!!$   
-!!$  close(2)
 
 
-!********* Calculating moments and Wehrl entropy *************!
-   Q2sum=0d0
-   Qpsitemp=0d0
-   Wtemp=0d0
-        nMC=1e7
-       do i=1, nMC
-          call random_number(uMC)
-          jq = 1 + FLOOR((kkk)*uMC)
-          Q2temp=(Q(jq)*Q(jq))*sin(ThetaL(jq))
-          Q2sum=Q2sum+Q2temp
-          Qpsitemp=Qpsitemp+(Q(jq))*sin(ThetaL(jq))
-          Wtemp=Wtemp-(Q(jq))*log(Q(jq))*sin(ThetaL(jq))
-       enddo
-
-       Qpsi=2*pi*pi*Qpsitemp*((2.0*jj+1)/(4*pi))/nMC
-       QM2=((4.0*jj+1)/(2*jj+1))*((2.0*jj+1)/(4*pi))*2*pi*pi*(Q2sum/(nMC))
-       Wpsi=((2.0*jj+1)/(4*pi))*2*pi*pi*(Wtemp/(nMC))
-       
-       print*,'first  moment of Husimi rep  <Q>     :',Qpsi 
-       print*,'second moment of Husimi rep  <Q^2>   :',QM2
-       print*,'Entropy       of Husimi rep -<Q lnQ>):',Wpsi
-       print*,'flag',ThetaL(kkk),PhiL(kkk)
-   
 
 
   
@@ -362,7 +294,7 @@ print*,'gammay= ',gammay
 !---------------------!
 
 
-!********  Subroutine to calculate binomial factors ****!
+!********   Subroutine for calculatin binomial factors ****!
  
 subroutine binomial(x,y,b)
      implicit none
