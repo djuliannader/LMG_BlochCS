@@ -10,6 +10,7 @@ Prior to the compilation of any code you must first check to make sure you have 
 In case you do not have them, you can install easily using the following linux commands 
 
 sudo apt-get install gfortran
+
 sudo apt-get install libblas-dev liblapack-dev
 
 # Clone the repository
