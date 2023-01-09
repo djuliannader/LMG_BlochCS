@@ -1,6 +1,6 @@
 !******************
 ! compile as:
-! gfortran -o LGMcoefC.exe ./DiagonalizatorLGMV3CoefC.f90 -llapack -lblas
+! gfortran -o LMGcoefC.exe ./src/DiagonalizatorLMGV3CoefC.f90 -llapack -lblas
 !************************
 !------------------------------------------------------------------------!
 ! Author Daniel Julian Nader                                             !

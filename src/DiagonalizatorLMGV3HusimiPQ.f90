@@ -1,6 +1,6 @@
 !******************
 ! compile as:
-! gfortran -o LGMHusimiPQ.exe ./DiagonalizatorLGMV3HusimiPQ.f90 -llapack -lblas
+! gfortran -o LMGHusimiPQ.exe ./src/DiagonalizatorLMGV3HusimiPQ.f90 -llapack -lblas
 !************************
 !------------------------------------------------------------------------!
 ! Author Daniel Julian Nader                                             !
