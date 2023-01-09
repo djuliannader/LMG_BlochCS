@@ -3,8 +3,15 @@ This is a collection of codes we used to study the time evolution of Bloch Coher
 
 Prior to the compilation of any code you must first check to make sure you have the following:
 
-1. Lapack 
-2. Blas
+1. gfortran compiler
+2. Lapack 
+3. Blas
+
+In case you do not have them, you can easily install them using the following linux commands 
+
+sudo apt-get install gfortran
+
+sudo apt-get install libblas-dev liblapack-dev
 
 # Clone the repository
 
@@ -27,7 +34,7 @@ We recomend to change the name of the output file after each calculation
 
 # References
 
-For formulas and discussions see
+For formulas and discussion see
 
 https://doi.org/10.1103/PhysRevE.104.064116
 
