@@ -1,6 +1,6 @@
 !******************
 ! compile as:
-! gfortran -o LGMHusimiPQt.exe ./src/DiagonalizatorLMGV3HusimiPQt.f90 -llapack -lblas
+! gfortran -o LGMHusimiPQt.exe ./DiagonalizatorLMGV3HusimiPQt.f90 -llapack -lblas
 !************************
 !------------------------------------------------------------------------!
 ! Author Daniel Julian Nader                                             !
@@ -41,6 +41,7 @@
  real(DP) :: Q2temp,QM2,Q2sum,Qpsitemp,Qpsi,Wtemp,Wpsi  ! Husimi function
 
  real(DP) :: Qh,u,vv,delta,bin,pi,test
+ real(DP) :: QQ,PP,jz
 
  pi=3.14159265359
  
@@ -275,10 +276,15 @@ print*,'gammay= ',gammay
 
        u=(1.0d0-cos(theta))*cos(phi)
        vv=(1.0d0-cos(theta))*sin(phi)
+
+       jz=-cos(theta)
+       QQ=sqrt(2*(1+jz))*cos(phi)
+       PP=-sqrt(2*(1+jz))*sin(phi)
+       
        Qh= 1.0d0*(sumre**2.0+sumim**2.0)
  
-       write(1,*)u,'  ',vv,' ', Qh 
-
+       write(1,*)QQ,'  ',PP,' ', Qh 
+       
        phi=phi+delta
     enddo
     theta=theta+delta
