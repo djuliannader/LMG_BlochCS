@@ -1,6 +1,6 @@
 !******************
 ! compile as:
-! gfortran -o LGMjz.exe ./src/LMGV3expectationjz.f90 -llapack -lblas
+! gfortran -o LGMjz.exe ./LMGV3expectationjz.f90 -llapack -lblas
 !************************
 !------------------------------------------------------------------------!
 ! Author Daniel Julian Nader                                             !
@@ -8,7 +8,8 @@
 !                                                                        !
 !  This code:                                                            !        
 !     -  diagonalize LGM Model in SU(2) representation                   !
-!     -  Calculate  the expectation <z0|Jz(t)|z0>                        !
+!     -  calculates the expectation value <z0|Jz^2(t)|z0>                !
+!     -  calculates fotoc  <z0|Jz^2(t)|z0> - <z0|Jz(t)|z0>^2             !
 !                                                                        !
 ! The output is printed in the file: jz_expectation.dat                  !
 !                                                                        !
@@ -33,13 +34,17 @@
  real(8), allocatable :: m0p(:,:),m1p(:,:),m2p(:,:),eigp(:)
  real(8), allocatable :: m0n(:,:),m1n(:,:),m2n(:,:),eign(:)
  real(8), allocatable :: Q(:),ThetaL(:),PhiL(:)
+ real(8), allocatable :: bpre(:),bnre(:),bpim(:),bnim(:)
  real(8) :: epsilon,uMC, Ps, w, v, gammax, gammay  ! Hamiltonian
- real(DP) :: bkre,bkim,bkpre,bkpim,sumint
+ real(DP) :: bkre,bkim,bkpre,bkpim,sumint,sumint2
  real(DP) :: absbksqrt,theta,phi,alabs  
  real(DP) :: sumre,sumim,dt
+ real(DP) :: sumre2,sumim2
  real(DP) :: Q2temp,QM2,Q2sum,Qpsitemp,Qpsi,Wtemp,Wpsi  ! Husimi
 
  real(DP) :: Qh,u,vv,delta,bin,pi,test
+
+ character(len = 50) :: outputfile 
 
  pi=3.14159265359
  
@@ -55,10 +60,13 @@
  read*, gammax
  print*,"gammay (parameter)"
  read*, gammay
- print*,'theta (coherent state)'
+ print*,'theta (initial coherent state)'
  read*,theta
- print*,'phi (coherent state)'
+ print*,'phi (initial coherent state)'
  read*,phi
+ print*,'output file name'
+ read*,outputfile
+  
  
  v=epsilon*(gammax-gammay)/(2.0*(2.0*jj-1.0))
  w=epsilon*(gammax+gammay)/(2.0*(2.0*jj-1.0))
@@ -74,10 +82,12 @@
  allocate (m1p(jj+1,jj+1))
  allocate (m2p(jj+1,jj+1))
  allocate (eigp(jj+1))
+ allocate (bpre(jj+1),bpim(jj+1))
  allocate (m0n(jj,jj))
  allocate (m1n(jj,jj))
  allocate (m2n(jj,jj))
  allocate (eign(jj))
+ allocate (bnre(jj),bnim(jj))
  allocate (Q(30000))
 
 
@@ -186,7 +196,7 @@ print*,'gammay= ',gammay
    print*,'************************'
    print*,'Husimi Representation  *'
    print*,'see file:              *'
-   print*,'   jz_expectation.dat  *'
+   print*,'   fotoc_jz.dat        *'
    print*,'                       *'
    print*,'************************'
 
@@ -195,9 +205,9 @@ print*,'gammay= ',gammay
 !******************************************************************************
 !****  Calculating the expectation value <Jz>                *********!
 !!$!******************************************************************************
-  open(1,file='jz_expectation.dat',status='new')
+  open(1,file=outputfile,status='new')
 
-  dt=0.02
+  dt=0.01
   write(1,*)'# ********Parameters**********  #'
   write(1,*)'# angular momentum',jj
   write(1,*)'# Epsilon',epsilon
@@ -209,82 +219,89 @@ print*,'gammay= ',gammay
   write(1,*)'# positive parity '
   write(1,*)'# dt #',dt
   write(1,*)'# ****************************  #'
-  write(1,*)'#     t             Re(j_Z)             Im(j_z)   '       
+  write(1,*)'#     t         <J_z>         fotoc                    '       
 
-  
-  alabs=1.0d0*tan(theta/2.0)
-  do kkk=0,5000                       !  
-     sumre = 0.0
-     sumim = 0.0
-   do k=1,jj+1                        !  
-!****** calculating bk even*********************************************!
-      bkre = 0.0d0
-      bkim = 0.0d0
+
+   alabs=1.0d0*tan(theta/2.0)
+   !****** calculating bk=<E_k|alpha0> positive parity*********************************************!
+   do k=1,jj+1
    do m=0,jj
    call binomial(2*jj,jj+(-jj+2*m),bin)
-   bkre=bkre+m1p(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
+   bpre(k)=bpre(k)+m1p(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
          &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m)))*cos((jj+(-jj+2*m))*phi)
-   bkim=bkim+m1p(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
+   bpim(k)=bpim(k)+m1p(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
          &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m)))*sin((jj+(-jj+2*m))*phi)
    enddo
-   !****   calculating bkprime even ************************************!
-   do kp=1, jj+1
-   bkpre=0.0d0
-   bkpim=0.0d0
-   do m=0,jj
-   call binomial(2*jj,jj+(-jj+2*m),bin)
-   bkpre=bkpre+m1p(m+1,kp)*(1.0/(1.+alabs**2.0)**jj)*  &
-         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m)))*cos((jj+(-jj+2*m))*phi)
-   bkpim=bkpim+m1p(m+1,kp)*(1.0/(1.+alabs**2.0)**jj)*  &
-         &  bin**(1./2.)*((alabs)**(jj+(-jj+2*m)))*sin((jj+(-jj+2*m))*phi)
    enddo
-   sumint=0.0d0
-   do mm=0,jj
-       sumint=sumint+m1p(mm+1,k)*m1p(mm+1,kp)*(-jj+2*mm)
-      enddo
-   sumre=sumre+((bkre*bkpre+bkim*bkpim)*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint+ &
-         & ((-bkim*bkpre+bkre*bkpim)*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint
-   sumim=sumim-((bkre*bkpre+bkim*bkpim)*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint+ &
-         & ((-bkim*bkpre+bkre*bkpim)*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint
-   enddo
-   enddo
-
-
-   do k=1,jj                          !  this cycle runs for first sume on k (bk) M odd
-   bkre = 0.0d0
-   bkim = 0.0d0
+   
+   !****** calculating bk=<E_k|alpha0> negative parity*********************************************!
+   do k=1,jj
    do m=0,jj-1
    call binomial(2*jj,jj+(-jj+1+2*m),bin)
-   bkre=bkre+m1n(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
+   bnre(k)=bnre(k)+m1n(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
          &  bin**(1./2.)*((alabs)**(jj+(-jj+1+2*m)))*cos((jj+(-jj+1+2*m))*phi)
-   bkim=bkim+m1n(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
+   bnim(k)=bnim(k)+m1n(m+1,k)*(1.0/(1.+alabs**2.0)**jj)*  &
         &  bin**(1./2.)*((alabs)**(jj+(-jj+1+2*m)))*sin((jj+(-jj+1+2*m))*phi)
    enddo
-   !****   calculating bkprime odd ************************************!
+   enddo
+
+
+
+
+  !****   loop for time ************************************!
+  do kkk=0,500                       !  
+     sumre = 0.0
+     sumim = 0.0
+     sumre2 = 0.0
+     sumim2 = 0.0
+   !****   loop for k ************************************!
+   do k=1,jj+1                        !  
+   !****   loop for kprime ************************************!
+   do kp=1, jj+1
+   !****   loop for M ************************************!
+   sumint=0.0d0
+   sumint2=0.0d0
+   !****  calculating sum_M <JM|E_k><JM|E_kp> (positive parity) **********************!
+   do mm=0,jj
+      sumint=sumint+m1p(mm+1,k)*m1p(mm+1,kp)*(-jj+2*mm)               ! This sum is introduced for J_z|JM>
+      sumint2=sumint2+m1p(mm+1,k)*m1p(mm+1,kp)*(-jj+2*mm)*(-jj+2*mm)   ! This sum is introduced for J_z^2|JM>
+   enddo
+   sumre=sumre+((bpre(k)*bpre(kp)+bpim(k)*bpim(kp))*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint+ &
+        & ((-bpim(k)*bpre(kp)+bpre(k)*bpim(kp))*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint
+   sumre2=sumre2+((bpre(k)*bpre(kp)+bpim(k)*bpim(kp))*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint2+ &
+         & ((-bpim(k)*bpre(kp)+bpre(k)*bpim(kp))*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint2
+   sumim=sumim-((bpre(k)*bpre(kp)+bpim(k)*bpim(kp))*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint+ &
+        & ((-bpim(k)*bpre(kp)+bpre(k)*bpim(kp))*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint
+   sumim2=sumim2-((bpre(k)*bpre(kp)+bpim(k)*bpim(kp))*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint2+ &
+         & ((-bpim(k)*bpre(kp)+bpre(k)*bpim(kp))*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint2
+   enddo
+   enddo
+  !*****  loop for k negative parity
+   do k=1,jj                          
+   !****  loop for bkprime negative parity ************************************!
    do kp=1,jj
-   bkpre=0.0d0
-   bkpim=0.0d0
-     do m=0,jj-1
-     call binomial(2*jj,jj+(-jj+1+2*m),bin)
-     bkpre=bkpre+m1n(m+1,kp)*(1.0/(1.+alabs**2.0)**jj)*  &
-         &  bin**(1./2.)*((alabs)**(jj+(-jj+1+2*m)))*cos((jj+(-jj+1+2*m))*phi)
-     bkpim=bkpim+m1n(m+1,kp)*(1.0/(1.+alabs**2.0)**jj)*  &
-        &  bin**(1./2.)*((alabs)**(jj+(-jj+1+2*m)))*sin((jj+(-jj+1+2*m))*phi)
-     enddo
-  sumint=0.0d0
+   !****   loop for M ************************************!
+     sumint=0.0d0
+     sumint2=0.0d0
+   !****  calculating sum_M <JM|E_k><JM|E_kp> (negative parity) **********************!
    do mm=0,jj-1
-       sumint=sumint+m1n(mm+1,k)*m1n(mm+1,kp)*(-jj+2*mm+1)
+      sumint=sumint+m1n(mm+1,k)*m1n(mm+1,kp)*(-jj+2*mm+1)                    ! This sum is introduced for J_z|JM>
+      sumint2=sumint2+m1n(mm+1,k)*m1n(mm+1,kp)*(-jj+2*mm+1)*(-jj+2*mm+1)     ! This sum is introduced for J_z^2|JM>
    enddo
-   sumre=sumre+((bkre*bkpre+bkim*bkpim)*cos(kkk*dt*(eign(k)-eign(kp))))*sumint+ &
-        & ((-bkim*bkpre+bkre*bkpim)*sin(kkk*dt*(eign(k)-eign(kp))))*sumint
-   sumim=sumim-((bkre*bkpre+bkim*bkpim)*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint+ &
-         & ((-bkim*bkpre+bkre*bkpim)*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint
+   sumre=sumre+((bnre(k)*bnre(kp)+bnim(k)*bnim(kp))*cos(kkk*dt*(eign(k)-eign(kp))))*sumint+ &
+        & ((-bnim(k)*bnre(kp)+bnre(k)*bnim(kp))*sin(kkk*dt*(eign(k)-eign(kp))))*sumint
+   sumre2=sumre2+((bnre(k)*bnre(kp)+bnim(k)*bnim(kp))*cos(kkk*dt*(eign(k)-eign(kp))))*sumint2+ &
+        & ((-bnim(k)*bnre(kp)+bnre(k)*bnim(kp))*sin(kkk*dt*(eign(k)-eign(kp))))*sumint2
+   sumim=sumim-((bnre(k)*bnre(kp)+bnim(k)*bnim(kp))*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint+ &
+        & ((-bnim(k)*bnre(kp)+bnre(k)*bnim(kp))*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint
+   sumim2=sumim2-((bnre(k)*bnre(k)+bnim(k)*bnim(kp))*sin(kkk*dt*(eigp(k)-eigp(kp))))*sumint2+ &
+         & ((-bnim(k)*bnre(kp)+bnre(k)*bnim(kp))*cos(kkk*dt*(eigp(k)-eigp(kp))))*sumint2
    enddo
    enddo
 
 
  
-   write(1,*)kkk*dt,'  ',sumre/J,' ',sumim/J 
+   write(1,*)kkk*dt,' ', sumre/(1.0*jj),' ',(sumre2-sumre**2)/(1.0*jj)**2
 
    
    enddo
